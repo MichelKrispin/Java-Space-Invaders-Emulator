@@ -10,25 +10,37 @@ public class CPUState {
     private JTextPane MemoryView;
     private JTextPane RegisterView;
     private JTextPane CommandView;
+    private JTextPane StackView;
+    private CPU8080 CPU;
 
     CPUState(CPU8080 CPU) {
-        StepButton.addActionListener(actionEvent -> {
-            int Steps = 1;
-            try {
-                Steps = Integer.parseInt(StepField.getText());
-                if (Steps < 1)
-                    Steps = 1;
-            } catch (NumberFormatException e) {
-                e.printStackTrace();
-            }
+        this.CPU = CPU;
+        // Do everything once
+        Update();
 
-            for (int i = 0; i < Steps; i++) {
-                CommandView.setText("(" + CPU.getInstructionCounter() + ") " + CPU.Run(true));
-            }
-            MemoryView.setText(CPU.getMemoryView());
-            RegisterView.setText(CPU.getRegisterView());
-            DisassemblerView.setText(CPU.Disassemble(16));
+        // Add everything to button
+        StepButton.addActionListener(actionEvent -> {
+            Update();
         });
+    }
+
+    private void Update() {
+        int Steps = 1;
+        try {
+            Steps = Integer.parseInt(StepField.getText());
+            if (Steps < 1)
+                Steps = 1;
+        } catch (NumberFormatException e) {
+            e.printStackTrace();
+        }
+
+        for (int i = 0; i < Steps; i++) {
+            CommandView.setText("(" + CPU.getInstructionCounter() + ") " + CPU.Run(true));
+        }
+        MemoryView.setText(CPU.getMemoryView());
+        StackView.setText(CPU.getStackView());
+        RegisterView.setText(CPU.getRegisterView());
+        DisassemblerView.setText(CPU.Disassemble(16));
     }
 
     void Show() {
@@ -43,7 +55,7 @@ public class CPUState {
         }
         frame.setContentPane(rootPanel);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(600, 350);
+        frame.setSize(700, 350);
         frame.setVisible(true);
     }
 }

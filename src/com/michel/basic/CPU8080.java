@@ -32,7 +32,7 @@ public class CPU8080 {
                 case 0x00:
                     PC++;
                     if (Step) {
-                        return "NOP";
+                        return "NOP\n-> Do nothing";
                     }
                     break;
                 case 0x01: // LXI B,D16
@@ -40,7 +40,7 @@ public class CPU8080 {
                     C = (byte)(Memory[PC+1] & 0x000000FF);
                     PC += 3;
                     if (Step) {
-                        return "LXI B";
+                        return "LXI\n-> Load memory into B from parameter";
                     }
                     break;
                 case 0x05: // DCR B
@@ -49,14 +49,14 @@ public class CPU8080 {
                     SetFlags(B, false);
                     PC++;
                     if (Step) {
-                        return "Decrease B";
+                        return "DCR\n-> Decrease B";
                     }
                     break;
                 case 0x06: // MVI B, D8
                     B = Memory[PC+1];
                     PC += 2;
                     if (Step) {
-                        return "MOV B";
+                        return "MOV\n-> Move address into B";
                     }
                     break;
                 case 0x09: // DAD B
@@ -100,7 +100,7 @@ public class CPU8080 {
                     A = Memory[(char)((D << 8) | (E & 0x000000FF))];
                     PC++;
                     if (Step) {
-                        return "LDAX (Load memory in A)";
+                        return "LDAX\n-> Load memory in A)";
                     }
                     break;
                 case 0x21: // LXI H,D16
@@ -117,7 +117,7 @@ public class CPU8080 {
                         H++;
                     PC++;
                     if (Step) {
-                        return "Increment HL";
+                        return "INX\n-> Increment HL";
                     }
                     break;
                 case 0x26: // MVI H,D8
@@ -134,14 +134,14 @@ public class CPU8080 {
                     SP = (char) ((Memory[PC+2] << 8) | (Memory[PC+1] & 0x000000FF));
                     PC += 3;
                     if (Step) {
-                        return "LXI (Push to stack pointer)";
+                        return "LXI\n-> Push to stack pointer";
                     }
                     break;
                 case 0x32: // STA adr
                     Memory[(char)((Memory[PC+2] << 8) | (Memory[PC+1] & 0x000000FF))] = A;
                     PC += 3;
                     if (Step) {
-                        return "STA (Save A to adress)";
+                        return "STA\n-> Save A to adress";
                     }
                     break;
                 case 0x36: // MVI M,D8
@@ -225,7 +225,7 @@ public class CPU8080 {
                 case (byte) 0xc3: // JMP adr
                     PC = (char) ((Memory[PC+2] << 8) | (Memory[PC+1] & 0x000000FF));
                     if (Step) {
-                        return "JMP";
+                        return "JMP to address";
                     }
                     break;
                 case (byte) 0xc5: // PUSH B
@@ -243,9 +243,9 @@ public class CPU8080 {
                     //break;
                 case (byte) 0xc9: // RET
                     PC = (char)((Memory[SP+1] << 8) | (Memory[SP] & 0x000000FF));
-                    SP -= 2;
+                    SP += 2;
                     if (Step) {
-                        return "RET";
+                        return "RET\n-> Return from call";
                     }
                     break;
                 case (byte) 0xcd: // CALL adr
@@ -334,6 +334,10 @@ public class CPU8080 {
         }
     }
 
+    /**
+     * Print the memory for the next 96 bytes.
+     * @return A pretty printed String.
+     */
     String getMemoryView() {
         StringBuilder Result = new StringBuilder();
         for (int i = 0; i < 96; i++) {
@@ -344,6 +348,33 @@ public class CPU8080 {
                 Result.append(String.format("%04X", PC+i)).append("\t");
             }
             Result.append(String.format("%02X", Memory[PC + i])).append(" ");
+        }
+        return Result.toString();
+    }
+
+    /**
+     * Print the stack -12 to +36 bytes.
+     * The current position is indicated by the arrow.
+     * @return A pretty printed String.
+     */
+    String getStackView() {
+        StringBuilder Result = new StringBuilder();
+        for (int i = -12; i < 36; i++) {
+            if (i % 4 == 0) {
+                if (i != -12) {
+                    Result.append("\n");
+                }
+                Result.append(String.format("%04X", (SP+i)&0x0000FFFF));
+                if (i == 0){
+                    Result.append(" ->");
+                }
+                Result.append("\t");
+            }
+            try {
+                Result.append(String.format("%02X", Memory[SP + i])).append(" ");
+            } catch (IndexOutOfBoundsException e) { // Skip this one as its probably negative
+                Result.append("xx ");
+            }
         }
         return Result.toString();
     }
