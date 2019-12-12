@@ -1,6 +1,13 @@
 package com.michel.basic;
 
 public class CPU8080 {
+    // PSW binary flags:
+    static private byte ZeroFlag   = 0x01;
+    static private byte SignFlag   = 0x02;
+    static private byte ParityFlag = 0x04;
+    static private byte CarryFlag  = 0x08;
+    static private byte ACFlag     = 0x10;
+
     private byte PSW = 0; // Flags
     private byte A = 0;
     private byte B = 0;
@@ -18,7 +25,9 @@ public class CPU8080 {
     }
 
     protected void Run() {
+        int InstructionCounter = 0;
         while(true) {
+            PrintState();
             switch(Memory[PC]) {
                 case 0x00:
                     System.out.println(String.format("0x%04X", (int)PC) + " - " + String.format("0x%02X", Memory[PC]) + " NOP");
@@ -33,10 +42,10 @@ public class CPU8080 {
                 case 0x05: // DCR B
                     System.out.println(String.format("0x%04X", (int)PC) + " - " + String.format("0x%02X", Memory[PC]) + " - Decrease B");
                     B -= 1;
-                    // TODO: SET FLAGS
+                    // Set flags
+                    SetFlags(B, false);
                     PC++;
-                    return;
-                    //break;
+                    break;
                 case 0x06: // MVI B, D8
                     B = Memory[PC+1];
                     System.out.println(String.format("0x%04X", (int)PC) + " - " + String.format("0x%02X", Memory[PC]) + " - MOV B");
@@ -66,6 +75,13 @@ public class CPU8080 {
                     D = Memory[PC+2];
                     E = Memory[PC+1];
                     PC += 3;
+                    break;
+                case 0x13: // INX D
+                    System.out.println(String.format("0x%04X", (int)PC) + " - " + String.format("0x%02X", Memory[PC]) + " - INX D");
+                    E++;
+                    if (E == 0) // If E overflows increment D
+                        D++;
+                    PC++;
                     break;
                 case 0x19: // DAD D
                     System.out.println(String.format("0x%04X", (int)PC) + " - " + String.format("0x%02X", Memory[PC]) + " is not implemented");
@@ -105,10 +121,10 @@ public class CPU8080 {
                     PC += 3;
                     break;
                 case 0x32: // STA adr
-                    System.out.println(String.format("0x%04X", (int)PC) + " - " + String.format("0x%02X", Memory[PC]) + " is not implemented");
-                    PC++;
-                    return;
-                    //break;
+                    System.out.println(String.format("0x%04X", (int)PC) + " - " + String.format("0x%02X", Memory[PC]) + " - STA (Save A to adress)");
+                    Memory[(char)((Memory[PC+2] << 8) | (Memory[PC+1] & 0x000000FF))] = A;
+                    PC += 3;
+                    break;
                 case 0x36: // MVI M,D8
                     System.out.println(String.format("0x%04X", (int)PC) + " - " + String.format("0x%02X", Memory[PC]) + " is not implemented");
                     PC++;
@@ -187,10 +203,13 @@ public class CPU8080 {
                     PC++;
                     break;
                 case (byte) 0xc2: // JNZ adr
-                    System.out.println(String.format("0x%04X", (int)PC) + " - " + String.format("0x%02X", Memory[PC]) + " is not implemented");
-                    PC++;
-                    return;
-                    //break;
+                    System.out.println(String.format("0x%04X", (int)PC) + " - " + String.format("0x%02X", Memory[PC]) + " - JNZ");
+                    if ((PSW & ZeroFlag) == 0) { // If zero flag is zero jump
+                        PC = (char) ((Memory[PC + 2] << 8) | (Memory[PC + 1] & 0x000000FF));
+                    } else {
+                        PC += 3;
+                    }
+                    break;
                 case (byte) 0xc3: // JMP adr
                     System.out.println(String.format("0x%04X", (int)PC) + " - " + String.format("0x%02X", Memory[PC]) + " - JMP");
                     PC = (char) ((Memory[PC+2] << 8) | (Memory[PC+1] & 0x000000FF));
@@ -208,10 +227,10 @@ public class CPU8080 {
                     return;
                     //break;
                 case (byte) 0xc9: // RET
-                    System.out.println(String.format("0x%04X", (int)PC) + " - " + String.format("0x%02X", Memory[PC]) + " is not implemented");
-                    PC++;
-                    return;
-                    //break;
+                    System.out.println(String.format("0x%04X", (int)PC) + " - " + String.format("0x%02X", Memory[PC]) + " - RET");
+                    PC = (char)((Memory[SP+1] << 8) | (Memory[SP] & 0x000000FF));
+                    SP -= 2;
+                    break;
                 case (byte) 0xcd: // CALL adr
                     System.out.println(String.format("0x%04X", (int)PC) + " - " + String.format("0x%02X", Memory[PC]) + " - CALL");
                     Memory[SP-1] = (byte)(PC >> 8);
@@ -279,13 +298,53 @@ public class CPU8080 {
                 default:
                     System.out.println(String.format("0x%04X", (int)PC) + " - " + String.format("0x%02X", Memory[PC]) + " - Doesn't exist");
                     PC++;
+                    return;
             }
+            /*
             // Print the next 8 bytes to the console for convenience
-            System.out.print(String.format("0x%04X", (int)PC) + " - ");
+            System.out.print("           ");
             for (int i = 0; i < 8; i++) {
                 System.out.print(String.format("%02X", Memory[PC+i]) + " ");
             }
             System.out.println();
+            if (InstructionCounter % 25000 == 0) {
+                System.out.println("Instruction counter at " + InstructionCounter);
+            }
+            */
+            InstructionCounter++;
         }
+    }
+
+    private void SetFlags(byte Input, boolean SetCarryFlag) {
+        if (Input == 0) {
+            PSW = (byte)(PSW | ZeroFlag);
+        }
+        else {
+            PSW = (byte)(PSW & (~ZeroFlag));
+        }
+        if (0x80 == (Input & 0x80)) {
+            PSW = (byte)(PSW | SignFlag);
+        } else {
+            PSW = (byte)(PSW & (~SignFlag));
+        }
+        if (SetCarryFlag) {
+            System.out.println(" -- IMPLEMENT CARRY FLAG -- ");
+        }
+    }
+
+    private void PrintState() {
+        System.out.println("_____________________________________________");
+        System.out.println("A  F   B  C   D  E   H  L   PC    SP    FLAGS");
+        System.out.println(
+                String.format("%02X", A) + " 00  " +
+                        String.format("%02X", B) + " " +
+                        String.format("%02X", C) + "  " +
+                        String.format("%02X", D) + " " +
+                        String.format("%02X", E) + "  " +
+                        String.format("%02X", H) + " " +
+                        String.format("%02X", L) + "  " +
+                        String.format("%04X", (int)PC) + "  " +
+                        String.format("%04X", (int)SP) + "  " +
+                        Integer.toBinaryString((int)PSW));
     }
 }

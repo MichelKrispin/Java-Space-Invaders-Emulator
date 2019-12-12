@@ -1,5 +1,6 @@
 package com.michel.basic;
 
+import javax.swing.*;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -7,6 +8,9 @@ import java.util.Arrays;
 
 public class Main {
     public static void main(String[] argv) {
+        CPUState Window = new CPUState();
+        Window.Show();
+        /*
         try {
             byte[] file = Files.readAllBytes(Paths.get("./invaders/invaders"));
             byte[] memory = new byte[16000];
@@ -16,6 +20,6 @@ public class Main {
         } catch (IOException ie) {
             ie.printStackTrace();
         }
-
+         */
     }
 }
