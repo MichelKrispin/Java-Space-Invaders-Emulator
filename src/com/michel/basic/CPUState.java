@@ -13,7 +13,18 @@ public class CPUState {
 
     CPUState(CPU8080 CPU) {
         StepButton.addActionListener(actionEvent -> {
-            CommandView.setText("(" + CPU.getInstructionCounter() + ") " + CPU.Run(true));
+            int Steps = 1;
+            try {
+                Steps = Integer.parseInt(StepField.getText());
+                if (Steps < 1)
+                    Steps = 1;
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
+            }
+
+            for (int i = 0; i < Steps; i++) {
+                CommandView.setText("(" + CPU.getInstructionCounter() + ") " + CPU.Run(true));
+            }
             MemoryView.setText(CPU.getMemoryView());
             RegisterView.setText(CPU.getRegisterView());
             DisassemblerView.setText(CPU.Disassemble(16));
