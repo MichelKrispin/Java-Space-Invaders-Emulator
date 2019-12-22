@@ -2,11 +2,11 @@ package com.michel.basic;
 
 public class CPU8080 {
     // PSW binary flags:
-    static private byte ZeroFlag   = 0x01;
-    static private byte SignFlag   = 0x02;
-    static private byte ParityFlag = 0x04;
-    static private byte CarryFlag  = 0x08;
+    static private byte ZeroFlag   = (byte)0x80;
+    static private byte SignFlag   = 0x40;
+    static private byte ParityFlag = 0x20;
     static private byte ACFlag     = 0x10;
+    static private byte CarryFlag  = 0x08;
 
     private byte PSW = 0; // Flags
     private byte A = 0;
@@ -46,7 +46,18 @@ public class CPU8080 {
                 case 0x05: // DCR B
                     B -= 1;
                     // Set flags
-                    SetFlags(B, false);
+                    if (B == 0) {
+                        PSW = (byte)(PSW | ZeroFlag);
+                    }
+                    else {
+                        PSW = (byte)(PSW & (~ZeroFlag));
+                    }
+                    if (0x80 == (B & 0x80)) {
+                        PSW = (byte)(PSW | SignFlag);
+                    } else {
+                        PSW = (byte)(PSW & (~SignFlag));
+                    }
+                    // Skip carry flag because there is no calculation
                     PC++;
                     if (Step) {
                         return "DCR\n-> Decrease B";
@@ -61,19 +72,22 @@ public class CPU8080 {
                     break;
                 case 0x09: // DAD B
                     PC++;
-                    return "is not implemented";
+                    return "DAD B is not implemented";
                     //break;
                 case 0x0d: // DCR C
                     PC++;
-                    return "is not implemented";
+                    return "DCR C is not implemented";
                     //break;
                 case 0x0e: // MVI C,D8
-                    PC++;
-                    return "is not implemented";
-                    //break;
+                    C = Memory[PC+1];
+                    PC += 2;
+                    if (Step) {
+                        return "Move byte into C";
+                    }
+                    break;
                 case 0x0f: // RRC
                     PC++;
-                    return "is not implemented";
+                    return "RRC is not implemented";
                     //break;
                 case 0x11: // LXI D,D16
                     D = Memory[PC+2];
@@ -89,13 +103,27 @@ public class CPU8080 {
                         D++;
                     PC++;
                     if (Step) {
-                        return "INX D";
+                        return "Increment DE";
                     }
                     break;
                 case 0x19: // DAD D
+                {
+                    char HL = (char) ((H << 8) | (L & 0x000000FF));
+                    char DE = (char) ((D << 8) | (E & 0x000000FF));
+                    int Result = HL + DE;
+                    H = (byte) ((Result & 0x0000FF00) >> 8);
+                    L = (byte) (Result & 0x000000FF);
+                    if ((Result & 0xFFFF0000) != 0) {
+                        PSW = (byte) (PSW | CarryFlag);
+                    } else {
+                        PSW = (byte) (PSW & (~CarryFlag));
+                    }
                     PC++;
-                    return "is not implemented";
-                    //break;
+                    if (Step) {
+                        return "DAD D\n-> Add HL to DE";
+                    }
+                    break;
+                }
                 case 0x1a: // LDAX D
                     A = Memory[(char)((D << 8) | (E & 0x000000FF))];
                     PC++;
@@ -121,15 +149,29 @@ public class CPU8080 {
                     }
                     break;
                 case 0x26: // MVI H,D8
-                    PC++;
-                    return "is not implemented";
+                    H = Memory[PC+1];
+                    PC += 2;
+                    if (Step) {
+                        return "Move byte into H";
+                    }
                     //break;
                 case 0x29: // DAD H
+                {
+                    char HL = (char) ((H << 8) | (L & 0x000000FF));
+                    int Result = HL + HL;
+                    H = (byte) ((Result & 0x0000FF00) >> 8);
+                    L = (byte) (Result & 0x000000FF);
+                    if ((Result & 0xFFFF0000) != 0) {
+                        PSW = (byte) (PSW | CarryFlag);
+                    } else {
+                        PSW = (byte) (PSW & (~CarryFlag));
+                    }
                     PC++;
                     if (Step) {
-                        return "is not implemented";
+                        return "DAD H\n-> Add HL to HL";
                     }
                     break;
+                }
                 case 0x31: // LXI SP, D16
                     SP = (char) ((Memory[PC+2] << 8) | (Memory[PC+1] & 0x000000FF));
                     PC += 3;
@@ -141,37 +183,58 @@ public class CPU8080 {
                     Memory[(char)((Memory[PC+2] << 8) | (Memory[PC+1] & 0x000000FF))] = A;
                     PC += 3;
                     if (Step) {
-                        return "STA\n-> Save A to adress";
+                        return "STA\n-> Save A to address";
                     }
                     break;
                 case 0x36: // MVI M,D8
-                    PC++;
-                    return "is not implemented";
-                    //break;
+                    Memory[(char)((H << 8) | (L & 0x000000FF))] = Memory[PC+1];
+                    PC += 2;
+                    if (Step) {
+                        return "Move byte immediately into Memory[HL]";
+                    }
+                    break;
                 case 0x3a: // LDA adr
-                    PC++;
-                    return "is not implemented";
-                    //break;
+                    A = Memory[(char)((Memory[PC+2] << 8) | (Memory[PC+1] & 0x000000FF))];
+                    PC += 3;
+                    if (Step) {
+                        return "LDA adr\n-> Load address into A";
+                    }
+                    break;
                 case 0x3e: // MVI A,D8
-                    PC++;
-                    return "is not implemented";
-                    //break;
+                    A = Memory[PC+1];
+                    PC += 2;
+                    if (Step) {
+                        return "Move byte immediately into A";
+                    }
+                    break;
                 case 0x56: // MOV D,M
+                    D = Memory[(char)((H << 8) | (L & 0x000000FF))];
                     PC++;
-                    return "is not implemented";
-                    //break;
+                    if (Step) {
+                        return "Move Memory[HL] into D";
+                    }
+                    break;
                 case 0x5e: // MOV E,M
+                    E = Memory[(char)((H << 8) | (L & 0x000000FF))];
                     PC++;
-                    return "is not implemented";
-                    //break;
+                    if (Step) {
+                        return "Move Memory[HL] into E";
+                    }
+                    break;
                 case 0x66: // MOV H,M
+                    H = Memory[(char)((H << 8) | (L & 0x000000FF))];
                     PC++;
-                    return "is not implemented";
-                    //break;
+                    if (Step) {
+                        return "Move Memory[HL] into H";
+                    }
+                    break;
                 case 0x6f: // MOV L,A
+                    L = A;
                     PC++;
-                    return "is not implemented";
-                    //break;
+                    if (Step) {
+                        return "Move A into L";
+                    }
+                    break;
                 case 0x77: // MOV M,A
                     Memory[(char)((H << 8) | (L & 0x000000FF))] = A;
                     PC++;
@@ -180,28 +243,40 @@ public class CPU8080 {
                     }
                     break;
                 case 0x7a: // MOV A,D
+                    A = D;
                     PC++;
-                    return "is not implemented";
-                    //break;
+                    if (Step) {
+                        return "Move D into A";
+                    }
+                    break;
                 case 0x7b: // MOV A,E
+                    A = E;
                     PC++;
-                    return "is not implemented";
-                    //break;
+                    if (Step) {
+                        return "Move E into A";
+                    }
+                    break;
                 case 0x7c: // MOV A,H
+                    A = H;
                     PC++;
-                    return "is not implemented";
-                    //break;
+                    if (Step) {
+                        return "Move H into A";
+                    }
+                    break;
                 case 0x7e: // MOV A,M
+                    A = Memory[(char)((H << 8) | (L & 0x000000FF))];
                     PC++;
-                    return "is not implemented";
-                    //break;
+                    if (Step) {
+                        return "Move Memory[HL] into A";
+                    }
+                    break;
                 case (byte) 0xa7: // ANA A
                     PC++;
-                    return "is not implemented";
+                    return "ANA A is not implemented";
                     //break;
                 case (byte) 0xaf: // XRA A
                     PC++;
-                    return "is not implemented";
+                    return "XRA A is not implemented";
                     //break;
                 case (byte) 0xc1: // POP B
                     C = Memory[SP];
@@ -219,7 +294,7 @@ public class CPU8080 {
                         PC += 3;
                     }
                     if (Step) {
-                        return "JNZ";
+                        return "Jump if not zero";
                     }
                     break;
                 case (byte) 0xc3: // JMP adr
@@ -239,7 +314,7 @@ public class CPU8080 {
                     break;
                 case (byte) 0xc6: // ADI D8
                     PC++;
-                    return "is not implemented";
+                    return "ADI D8 is not implemented";
                     //break;
                 case (byte) 0xc9: // RET
                     PC = (char)((Memory[SP+1] << 8) | (Memory[SP] & 0x000000FF));
@@ -249,8 +324,9 @@ public class CPU8080 {
                     }
                     break;
                 case (byte) 0xcd: // CALL adr
-                    Memory[SP-1] = (byte)(PC >> 8);
-                    Memory[SP-2] = (byte)(PC & 0xFF);
+                    // Return address is the next instruction
+                    Memory[SP-1] = (byte)((PC + 3) >> 8);
+                    Memory[SP-2] = (byte)((PC + 3) & 0xFF);
                     SP -= 2;
                     PC = (char) ((Memory[PC+2] << 8) | (Memory[PC+1] & 0x000000FF));
                     if (Step) {
@@ -258,34 +334,65 @@ public class CPU8080 {
                     }
                     break;
                 case (byte) 0xd1: // POP D
+                    E = Memory[SP];
+                    D = Memory[SP+1];
+                    SP += 2;
                     PC++;
-                    return "is not implemented";
-                    //break;
+                    if (Step) {
+                        return "Pop D";
+                    }
+                    break;
                 case (byte) 0xd3: // OUT D8
                     PC++;
-                    return "is not implemented";
+                    return "OUT D8 is not implemented";
                     //break;
                 case (byte) 0xd5: // PUSH D
+                    Memory[SP-2] = E;
+                    Memory[SP-1] = D;
+                    SP -= 2;
                     PC++;
-                    return "is not implemented";
-                    //break;
+                    if (Step) {
+                        return "Push D";
+                    }
+                    break;
                 case (byte) 0xe1: // POP H
+                    L = Memory[SP];
+                    H = Memory[SP+1];
+                    SP += 2;
                     PC++;
-                    return "is not implemented";
-                    //break;
+                    if (Step) {
+                        return "Pop H";
+                    }
+                    break;
                 case (byte) 0xe5: // PUSH H
+                    Memory[SP-2] = L;
+                    Memory[SP-1] = H;
+                    SP -= 2;
                     PC++;
-                    return "is not implemented";
-                    //break;
+                    if (Step) {
+                        return "Push H";
+                    }
+                    break;
                 case (byte) 0xe6: // ANI D8
                     PC++;
-                    return "is not implemented";
+                    return "ANI D8 is not implemented";
                     //break;
                 case (byte) 0xeb: // XCHG
+                {
+                    byte HTemp = H;
+                    byte LTemp = L;
+                    H = D;
+                    L = E;
+                    D = HTemp;
+                    E = LTemp;
                     PC++;
-                    return "is not implemented";
-                    //break;
+                    if (Step) {
+                        return "Exchange HL and DE";
+                    }
+                    break;
+                }
                 case (byte) 0xf1: // POP PSW
+                    A = Memory[SP+1];
                     PSW = Memory[SP];
                     SP += 2;
                     PC++;
@@ -294,21 +401,39 @@ public class CPU8080 {
                     }
                     break;
                 case (byte) 0xf5: // PUSH PSW
-                    Memory[SP-1] = PSW;
+                    Memory[SP-1] = A;
+                    Memory[SP-2] = PSW;
                     SP -= 2;
                     PC++;
                     if (Step) {
-                        return "is not implemented";
+                        return "Push PSW";
                     }
                     break;
                 case (byte) 0xfb: // EI
                     PC++;
-                    return "is not implemented";
+                    return "EI is not implemented";
                     //break;
                 case (byte) 0xfe: // CPI D8
-                    PC++;
-                    return "is not implemented";
-                    //break;
+                    int result = A - Memory[PC+1];
+                    if (result == 0) { // Zero flag
+                        PSW = (byte)(PSW | ZeroFlag);
+                    } else {
+                        PSW = (byte)(PSW & (~ZeroFlag));
+                    }
+                    if (result < 0) { // Sign Flag
+                        PSW = (byte)(PSW | SignFlag);
+                    } else {
+                        PSW = (byte)(PSW & (~SignFlag));
+                    }
+                    if (A < Memory[PC+1]) // Carry Flag
+                        PSW = (byte)(PSW | CarryFlag);
+                    else
+                        PSW = (byte)(PSW & (~CarryFlag));
+                    PC += 2;
+                    if (Step) {
+                        return "CPI D8\n-> Compare A with byte";
+                    }
+                    break;
                 default:
                     System.out.println(String.format("0x%04X", (int)PC) + " - " + String.format("0x%02X", Memory[PC]) + " - Doesn't exist");
                     PC++;
@@ -380,8 +505,21 @@ public class CPU8080 {
     }
 
     String getRegisterView() {
+        String Flags = "";
+        if ((PSW & ACFlag) == ACFlag) Flags += "a";
+        else Flags += ".";
+        if ((PSW & CarryFlag) == CarryFlag) Flags += "c";
+        else Flags += ".";
+        if ((PSW & ParityFlag) == ParityFlag) Flags += "p";
+        else Flags += ".";
+        if ((PSW & SignFlag) == SignFlag) Flags += "s";
+        else Flags += ".";
+        if ((PSW & ZeroFlag) == ZeroFlag) Flags += "z";
+        else Flags += ".";
+
         return "A  F   B  C   D  E   H  L   PC    SP    FLAGS\n" +
-                String.format("%02X", A) + " 00  " +
+                String.format("%02X", A) + " " +
+                String.format("%02X", PSW) + " " +
                 String.format("%02X", B) + " " +
                 String.format("%02X", C) + "  " +
                 String.format("%02X", D) + " " +
@@ -390,7 +528,8 @@ public class CPU8080 {
                 String.format("%02X", L) + "  " +
                 String.format("%04X", (int)PC) + "  " +
                 String.format("%04X", (int)SP) + "  " +
-                String.format("%8s", Integer.toBinaryString((int)PSW)).replace(' ', '0');
+                Flags;
+                //String.format("%8s", Integer.toBinaryString((int)PSW)).replace(' ', '0');
     }
 
     int getInstructionCounter() {

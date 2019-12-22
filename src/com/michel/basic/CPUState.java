@@ -16,26 +16,34 @@ public class CPUState {
     CPUState(CPU8080 CPU) {
         this.CPU = CPU;
         // Do everything once
-        Update();
+        Update(false);
 
         // Add everything to button
         StepButton.addActionListener(actionEvent -> {
-            Update();
+            Update(true);
         });
+
+        // Set hover to work after clicking
+        StepButton.setRequestFocusEnabled(false);
     }
 
-    private void Update() {
-        int Steps = 1;
-        try {
-            Steps = Integer.parseInt(StepField.getText());
-            if (Steps < 1)
-                Steps = 1;
-        } catch (NumberFormatException e) {
-            e.printStackTrace();
-        }
+    private void Update(boolean WithStep) {
+        if (WithStep) {
+            int Steps = 1;
+            try {
+                Steps = Integer.parseInt(StepField.getText());
+                if (Steps < 1)
+                    Steps = 1;
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
+            }
 
-        for (int i = 0; i < Steps; i++) {
-            CommandView.setText("(" + CPU.getInstructionCounter() + ") " + CPU.Run(true));
+            for (int i = 0; i < Steps; i++) {
+                String Result = CPU.Run(true);
+                CommandView.setText("(" + CPU.getInstructionCounter() + ") " + Result);
+                if (Result.contains("is not implemented"))
+                    break;
+            }
         }
         MemoryView.setText(CPU.getMemoryView());
         StackView.setText(CPU.getStackView());
