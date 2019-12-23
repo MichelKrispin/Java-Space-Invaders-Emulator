@@ -2,49 +2,21 @@ package com.michel.basic;
 
 import javax.swing.*;
 
-public class CPUState {
+public class CPUView {
     protected JPanel rootPanel;
-    private JButton StepButton;
     private JTextPane DisassemblerView;
-    private JTextField StepField;
     private JTextPane MemoryView;
     private JTextPane RegisterView;
     private JTextPane CommandView;
     private JTextPane StackView;
     private CPU8080 CPU;
 
-    CPUState(CPU8080 CPU) {
+    CPUView(CPU8080 CPU) {
         this.CPU = CPU;
-        // Do everything once
-        Update(false);
-
-        // Add everything to button
-        StepButton.addActionListener(actionEvent -> {
-            Update(true);
-        });
-
-        // Set hover to work after clicking
-        StepButton.setRequestFocusEnabled(false);
     }
 
-    private void Update(boolean WithStep) {
-        if (WithStep) {
-            int Steps = 1;
-            try {
-                Steps = Integer.parseInt(StepField.getText());
-                if (Steps < 1)
-                    Steps = 1;
-            } catch (NumberFormatException e) {
-                e.printStackTrace();
-            }
-
-            for (int i = 0; i < Steps; i++) {
-                String Result = CPU.Run(true);
-                CommandView.setText("(" + CPU.getInstructionCounter() + ") " + Result);
-                if (Result.contains("is not implemented"))
-                    break;
-            }
-        }
+    void Update(String InstructionDescription) {
+        CommandView.setText("(" + CPU.getInstructionCounter() + ") " + InstructionDescription);
         MemoryView.setText(CPU.getMemoryView());
         StackView.setText(CPU.getStackView());
         RegisterView.setText(CPU.getRegisterView());

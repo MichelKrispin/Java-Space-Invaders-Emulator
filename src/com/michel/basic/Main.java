@@ -1,10 +1,8 @@
 package com.michel.basic;
 
-import javax.swing.*;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Arrays;
 
 public class Main {
     public static void main(String[] argv) {
@@ -19,7 +17,7 @@ public class Main {
             return;
         }
 
-        CPUState Window = new CPUState(CPU);
-        Window.Show();
+        SpaceInvadersMachine Machine = new SpaceInvadersMachine(CPU);
+        Machine.Show();
     }
 }
