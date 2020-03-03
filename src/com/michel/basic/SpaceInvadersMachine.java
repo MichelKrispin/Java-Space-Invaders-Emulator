@@ -5,6 +5,7 @@ import javax.swing.*;
 // TODO: FEHLER BEI 42433
 
 public class SpaceInvadersMachine {
+    private byte[] Memory;
     private CPU8080 CPU;
     private CPUView View;
     private JPanel rootPanel;
@@ -16,8 +17,9 @@ public class SpaceInvadersMachine {
     private boolean isRunning = false;
     private Instruction InstructionInformation;
 
-    SpaceInvadersMachine(CPU8080 CPU) {
-        this.CPU = CPU;
+    SpaceInvadersMachine(byte[] memory) {
+        this.Memory = memory;
+        this.CPU = new CPU8080(Memory);
         View = new CPUView(CPU);
         View.Show();
         View.Update("");
@@ -88,6 +90,6 @@ public class SpaceInvadersMachine {
     }
 
     private void createUIComponents() {
-        Canvas = new Screen();
+        Canvas = new Screen(Memory);
     }
 }

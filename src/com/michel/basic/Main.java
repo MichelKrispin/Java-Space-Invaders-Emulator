@@ -6,18 +6,17 @@ import java.nio.file.Paths;
 
 public class Main {
     public static void main(String[] argv) {
-        CPU8080 CPU;
+        byte[] memory;
         try {
             byte[] file = Files.readAllBytes(Paths.get("./invaders/invaders"));
-            byte[] memory = new byte[65536]; // 16 kilobytes
+            memory = new byte[65536]; // 16 kilobytes
             System.arraycopy(file, 0, memory, 0, file.length);
-            CPU = new CPU8080(memory);
         } catch (IOException ie) {
             ie.printStackTrace();
             return;
         }
 
-        SpaceInvadersMachine Machine = new SpaceInvadersMachine(CPU);
+        SpaceInvadersMachine Machine = new SpaceInvadersMachine(memory);
         Machine.Show();
     }
 }
